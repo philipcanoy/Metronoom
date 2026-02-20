@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pro Metronoom</title>
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+button, select, input {
+  padding: 8px;
+  margin: 5px;
+  font-size: 14px;
+}
+.pulse {
+  width: 40px;
+  height: 40px;
+  margin: 15px auto;
+  border-radius: 50%;
+  background: red;
+  opacity: 0.2;
+  transition: 0.1s;
+}
+.pulse.active {
+  opacity: 1;
+  transform: scale(1.3);
+}
+</style>
+</head>
+
+<body>
+<h2>🎸 Pro Metronoom</h2>
+
+BPM: <input type="number" id="bpm" value="80"><br>
+
+Maatsoort:
+<select id="beatsPerBar">
+  <option>3</option>
+  <option selected>4</option>
+  <option>5</option>
+  <option>6</option>
+</select>
+
+Subdivisions:
+<select id="subdivision">
+  <option value="1">Quarter</option>
+  <option value="2">8th</option>
+  <option value="4">16th</option>
+</select>
+
+Swing (%):
+<input type="number" id="swing" value="0" min="0" max="60"><br>
+
+<button onclick="start()">▶ Start</button>
+<button onclick="stop()">⏹ Stop</button>
+<button onclick="tap()">👆 Tap Tempo</button>
+
+<div class="pulse" id="pulse"></div>
+<p>Tel: <span id="beat">1</span></p>
+
+<script>
+let timer;
+let beat = 1;
+let taps = [];
+
+const click = new Audio("https://www.soundjay.com/button/sounds/button-16.mp3");
+const accent = new Audio("https://www.soundjay.com/button/sounds/button-10.mp3");
+
+function start() {
+  stop();
+
+  const bpm = +bpmInput();
+  const beatsPerBar = +document.getElementById("beatsPerBar").value;
+  const subdiv = +document.getElementById("subdivision").value;
+  const swing = +document.getElementById("swing").value / 100;
+
+  const baseMs = 60000 / bpm / subdiv;
+  let subCount = 0;
+
+  timer = setInterval(() => {
+    let isDownbeat = (beat === 1 && subCount === 0);
+
+    if (isDownbeat) accent.play();
+    else click.play();
+
+    pulse();
+
+    document.getElementById("beat").innerText = beat;
+
+    subCount++;
+    if (subCount >= subdiv) {
+      subCount = 0;
+      beat++;
+      if (beat > beatsPerBar) beat = 1;
+    }
+
+    // Swing timing (delay every second subdivision)
+    if (swing > 0 && subCount % 2 === 1) {
+      clearInterval(timer);
+      setTimeout(start, baseMs * swing);
+    }
+
+  }, baseMs);
+}
+
+function stop() {
+  clearInterval(timer);
+  beat = 1;
+}
+
+function bpmInput() {
+  return document.getElementById("bpm").value;
+}
+
+// Tap Tempo (average filtered)
+function tap() {
+  const now = Date.now();
+  taps.push(now);
+  if (taps.length > 6) taps.shift();
+
+  if (taps.length >= 3) {
+    let intervals = taps.slice(1).map((t,i)=>t-taps[i]);
+    let avg = intervals.reduce((a,b)=>a+b)/intervals.length;
+    let bpm = Math.round(60000/avg);
+    if (bpm > 30 && bpm < 300) document.getElementById("bpm").value = bpm;
+  }
+}
+
+// Visual pulse
+function pulse() {
+  const p = document.getElementById("pulse");
+  p.classList.add("active");
+  setTimeout(()=>p.classList.remove("active"),100);
+}
+</script>
+</body>
+</html>
